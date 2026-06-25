@@ -24,9 +24,9 @@ export default function AdminDashboard() {
   async function fetchAll() {
     try {
       const [t, s, u] = await Promise.all([
-        axios.get('http://localhost:3000/api/tasks', { headers }),
-        axios.get('http://localhost:3000/api/submissions', { headers }),
-        axios.get('http://localhost:3000/api/users?role=trainee', { headers })
+        axios.get('https://sohail-backend-api.onrender.com/api/tasks', { headers }),
+        axios.get('https://sohail-backend-api.onrender.com/api/submissions', { headers }),
+        axios.get('https://sohail-backend-api.onrender.com/api/users?role=trainee', { headers })
       ])
       setTasks(t.data)
       setSubmissions(s.data)
@@ -36,7 +36,7 @@ export default function AdminDashboard() {
 
   async function createTask() {
     if (!title || !assignedTo || !deadline) return
-    await axios.post('http://localhost:3000/api/tasks', {
+    await axios.post('https://sohail-backend-api.onrender.com/api/tasks', {
       title, description, assigned_to: Number(assignedTo), deadline
     }, { headers })
     setTitle(''); setDescription(''); setAssignedTo(''); setDeadline('')
@@ -44,7 +44,7 @@ export default function AdminDashboard() {
   }
 
   async function gradeSubmission(id) {
-    await axios.put(`http://localhost:3000/api/submissions/${id}/grade`, {
+    await axios.put(`https://sohail-backend-api.onrender.com/api/submissions/${id}/grade`, {
       score: Number(score[id]), feedback: feedback[id]
     }, { headers })
     fetchAll()

@@ -17,8 +17,8 @@ export default function TraineeDashboard() {
   async function fetchAll() {
     try {
       const [t, s] = await Promise.all([
-        axios.get('http://localhost:3000/api/tasks', { headers }),
-        axios.get('http://localhost:3000/api/submissions', { headers })
+        axios.get('https://sohail-backend-api.onrender.com/api/tasks', { headers }),
+        axios.get('https://sohail-backend-api.onrender.com/api/submissions', { headers })
       ])
       setTasks(t.data)
       setSubmissions(s.data)
@@ -26,7 +26,7 @@ export default function TraineeDashboard() {
   }
 
   async function submitTask(taskId) {
-    await axios.post(`http://localhost:3000/api/tasks/${taskId}/submissions`, {
+    await axios.post(`https://sohail-backend-api.onrender.com/api/tasks/${taskId}/submissions`, {
       submission_text: submissionText[taskId], file_url: null
     }, { headers })
     setSubmissionText({ ...submissionText, [taskId]: '' })

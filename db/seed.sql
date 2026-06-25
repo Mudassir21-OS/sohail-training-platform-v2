@@ -7,9 +7,9 @@
 -- Insert sample users
 INSERT INTO users (name, email, password_hash, role)
 VALUES
-('Admin User', 'admin@sohail.com', 'hashed_admin_password', 'admin'),
-('Ali Trainee', 'ali@sohail.com', 'hashed_ali_password', 'trainee'),
-('Sara Trainee', 'sara@sohail.com', 'hashed_sara_password', 'trainee');
+('Admin User', 'admin@sohail.com', '$2b$10$/Yxwp3IsPnC6vgdMF0kesOazgU4eWAFgomPzevHzpKLdTqnSsc8R.', 'admin'),
+('Ali Trainee', 'ali@sohail.com', '$2b$10$fTDq/3bZ/UwAU2zTZYqWwuEhIkJlWRIevB4VWSoZv14tueqZMUE3q', 'trainee'),
+('Sara Trainee', 'sara@sohail.com', '$2b$10$2DmznfGo4IeL8F9cvezffeIwOk/K3TgEpuFj.fL6xDx1XT.iE6NpC', 'trainee');
 
 -- Insert sample tasks
 INSERT INTO tasks (title, description, created_by, assigned_to, deadline, status)

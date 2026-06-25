@@ -1,3 +1,8 @@
+app.use(cors({
+    origin: '*',
+    methods: ['GET', 'POST', 'PUT', 'DELETE'],
+    allowedHeaders: ['Content-Type', 'Authorization']
+}));
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
@@ -17,6 +22,8 @@ const taskRoutes = require('./routes/taskRoutes');
 const submissionRoutes = require('./routes/submissionRoutes');
 
 app.use('/api/auth', authRoutes);
+const usersRoutes = require('./routes/users');
+app.use('/api/users', usersRoutes);
 app.use('/api/tasks', taskRoutes); 
 app.use('/api', submissionRoutes);
 // ------------------------------

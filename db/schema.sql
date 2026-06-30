@@ -1,10 +1,9 @@
 -- =====================================================
--- Sohail Training Platform v2
--- Data Layer: Database Schema
+-- Sohail Training Platform v2 - Week 2
+-- Data Layer: Real User System Schema
 -- Author: Mudassir Shahab
 -- =====================================================
 
--- Drop tables in reverse dependency order
 DROP TABLE IF EXISTS scores;
 DROP TABLE IF EXISTS submissions;
 DROP TABLE IF EXISTS tasks;
@@ -12,6 +11,7 @@ DROP TABLE IF EXISTS users;
 
 -- =========================
 -- Users Table
+-- Stores admins and trainees with login credentials and roles
 -- =========================
 CREATE TABLE users (
     id SERIAL PRIMARY KEY,
@@ -24,6 +24,7 @@ CREATE TABLE users (
 
 -- =========================
 -- Tasks Table
+-- Each task is created by an admin and assigned to one real trainee user
 -- =========================
 CREATE TABLE tasks (
     id SERIAL PRIMARY KEY,
@@ -49,6 +50,7 @@ CREATE TABLE tasks (
 
 -- =========================
 -- Submissions Table
+-- Each submission belongs to a task and a real trainee user
 -- =========================
 CREATE TABLE submissions (
     id SERIAL PRIMARY KEY,
@@ -74,6 +76,7 @@ CREATE TABLE submissions (
 
 -- =========================
 -- Scores Table
+-- Each score belongs to one submission and is graded by an admin
 -- =========================
 CREATE TABLE scores (
     id SERIAL PRIMARY KEY,

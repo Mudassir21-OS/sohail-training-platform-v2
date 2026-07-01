@@ -15,10 +15,12 @@ app.get('/api/health', (req, res) => {
 const authRoutes = require('./routes/authRoutes');
 const taskRoutes = require('./routes/taskRoutes'); 
 const submissionRoutes = require('./routes/submissionRoutes');
+const userRoutes = require('./routes/userRoutes');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/tasks', taskRoutes); 
 app.use('/api', submissionRoutes);
+app.use('/api/admin', userRoutes);
 // ------------------------------
 
 // Global Error Handler (Strictly matching the API Contract PDF Page 1)

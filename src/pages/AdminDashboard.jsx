@@ -3,6 +3,8 @@ import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 
+const BASE = 'https://sohail-backend-api.onrender.com'
+
 export default function AdminDashboard() {
   const { token, logout } = useAuth()
   const navigate = useNavigate()
@@ -17,6 +19,12 @@ export default function AdminDashboard() {
   const [score, setScore] = useState({})
   const [activeTab, setActiveTab] = useState('tasks')
 
+  // Add-trainee form state
+  const [traineeName, setTraineeName] = useState('')
+  const [traineeEmail, setTraineeEmail] = useState('')
+  const [traineePassword, setTraineePassword] = useState('')
+  const [traineeMsg, setTraineeMsg] = useState(null) // { type: 'success'|'error', text }
+
   const headers = { Authorization: `Bearer ${token}` }
 
   useEffect(() => { fetchAll() }, [])
@@ -24,9 +32,9 @@ export default function AdminDashboard() {
   async function fetchAll() {
     try {
       const [t, s, u] = await Promise.all([
-        axios.get('https://sohail-backend-api.onrender.com/api/tasks', { headers }),
-        axios.get('https://sohail-backend-api.onrender.com/api/submissions', { headers }),
-        axios.get('https://sohail-backend-api.onrender.com/api/users?role=trainee', { headers })
+        axios.get(`${BASE}/api/tasks`, { headers }),
+        axios.get(`${BASE}/api/submissions`, { headers }),
+        axios.get(`${BASE}/api/users?role=trainee`, { headers })
       ])
       setTasks(t.data)
       setSubmissions(s.data)
@@ -36,7 +44,7 @@ export default function AdminDashboard() {
 
   async function createTask() {
     if (!title || !assignedTo || !deadline) return
-    await axios.post('https://sohail-backend-api.onrender.com/api/tasks', {
+    await axios.post(`${BASE}/api/tasks`, {
       title, description, assigned_to: Number(assignedTo), deadline
     }, { headers })
     setTitle(''); setDescription(''); setAssignedTo(''); setDeadline('')
@@ -44,10 +52,31 @@ export default function AdminDashboard() {
   }
 
   async function gradeSubmission(id) {
-    await axios.put(`https://sohail-backend-api.onrender.com/api/submissions/${id}/grade`, {
+    await axios.put(`${BASE}/api/submissions/${id}/grade`, {
       score: Number(score[id]), feedback: feedback[id]
     }, { headers })
     fetchAll()
+  }
+
+  async function addTrainee() {
+    if (!traineeName || !traineeEmail || !traineePassword) {
+      setTraineeMsg({ type: 'error', text: 'All fields are required.' })
+      return
+    }
+    try {
+      await axios.post(`${BASE}/api/admin/trainees`, {
+        name: traineeName,
+        email: traineeEmail,
+        password: traineePassword,
+        role: 'trainee'
+      }, { headers })
+      setTraineeName(''); setTraineeEmail(''); setTraineePassword('')
+      setTraineeMsg({ type: 'success', text: `Trainee "${traineeName}" added successfully!` })
+      fetchAll()
+    } catch (e) {
+      const msg = e.response?.data?.error?.message || 'Failed to add trainee.'
+      setTraineeMsg({ type: 'error', text: msg })
+    }
   }
 
   const badge = {
@@ -60,6 +89,14 @@ export default function AdminDashboard() {
     width: '100%', padding: '12px 16px', borderRadius: 10,
     border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.3)',
     color: '#fff', fontSize: 14, boxSizing: 'border-box', marginBottom: 14, outline: 'none'
+  }
+
+  const tabs = ['tasks', 'submissions', 'create', 'trainees']
+  const tabLabels = {
+    tasks: '📋 Tasks',
+    submissions: '📤 Submissions',
+    create: '➕ Create Task',
+    trainees: '👥 Manage Trainees'
   }
 
   return (
@@ -99,13 +136,13 @@ export default function AdminDashboard() {
         </div>
 
         {/* Tabs */}
-        <div style={{ display: 'flex', gap: 8, marginBottom: 28 }}>
-          {['tasks', 'submissions', 'create'].map(tab => (
+        <div style={{ display: 'flex', gap: 8, marginBottom: 28, flexWrap: 'wrap' }}>
+          {tabs.map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)}
               style={{ padding: '10px 22px', borderRadius: 10, border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 600,
                 background: activeTab === tab ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : 'rgba(255,255,255,0.05)',
                 color: activeTab === tab ? '#fff' : '#94a3b8' }}>
-              {tab === 'tasks' ? '📋 Tasks' : tab === 'submissions' ? '📤 Submissions' : '➕ Create Task'}
+              {tabLabels[tab]}
             </button>
           ))}
         </div>
@@ -186,6 +223,89 @@ export default function AdminDashboard() {
             </div>
           </div>
         )}
+
+        {/* Manage Trainees — NEW THIS WEEK */}
+        {activeTab === 'trainees' && (
+          <div>
+            {/* Add Trainee Form */}
+            <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: 32, marginBottom: 32 }}>
+              <h2 style={{ color: '#fff', margin: '0 0 8px', fontSize: 22 }}>Add New Trainee</h2>
+              <p style={{ color: '#94a3b8', margin: '0 0 24px', fontSize: 14 }}>Create a real account — the trainee can log in immediately with these credentials.</p>
+
+              {traineeMsg && (
+                <div style={{
+                  background: traineeMsg.type === 'success' ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
+                  border: `1px solid ${traineeMsg.type === 'success' ? 'rgba(16,185,129,0.4)' : 'rgba(239,68,68,0.4)'}`,
+                  borderRadius: 10, padding: '12px 16px', marginBottom: 16,
+                  color: traineeMsg.type === 'success' ? '#34d399' : '#fca5a5', fontSize: 14
+                }}>
+                  {traineeMsg.type === 'success' ? '✅ ' : '❌ '}{traineeMsg.text}
+                </div>
+              )}
+
+              <input
+                placeholder="Full name"
+                value={traineeName}
+                onChange={e => { setTraineeName(e.target.value); setTraineeMsg(null) }}
+                style={inp}
+              />
+              <input
+                placeholder="Email address"
+                value={traineeEmail}
+                onChange={e => { setTraineeEmail(e.target.value); setTraineeMsg(null) }}
+                style={inp}
+              />
+              <input
+                placeholder="Password"
+                type="password"
+                value={traineePassword}
+                onChange={e => { setTraineePassword(e.target.value); setTraineeMsg(null) }}
+                style={inp}
+              />
+              <button onClick={addTrainee}
+                style={{ padding: '12px 32px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer', fontSize: 15, fontWeight: 700 }}>
+                Add Trainee
+              </button>
+            </div>
+
+            {/* Trainee List */}
+            <div>
+              <h2 style={{ color: '#fff', margin: '0 0 20px', fontSize: 22 }}>
+                All Trainees <span style={{ color: '#64748b', fontWeight: 400, fontSize: 16 }}>({users.length})</span>
+              </h2>
+              {users.length === 0 && (
+                <div style={{ textAlign: 'center', padding: 60, color: '#64748b' }}>
+                  <div style={{ fontSize: 48, marginBottom: 16 }}>👥</div>
+                  <p style={{ fontSize: 16 }}>No trainees yet. Add one above.</p>
+                </div>
+              )}
+              <div style={{ display: 'grid', gap: 12 }}>
+                {users.map(u => {
+                  const userTasks = tasks.filter(t => t.assigned_to === u.id)
+                  return (
+                    <div key={u.id} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 14, padding: 20, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+                        <div style={{ width: 40, height: 40, borderRadius: '50%', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#fff', fontWeight: 700, fontSize: 16 }}>
+                          {u.name?.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <p style={{ color: '#fff', margin: 0, fontWeight: 600, fontSize: 15 }}>{u.name}</p>
+                          <p style={{ color: '#64748b', margin: '2px 0 0', fontSize: 13 }}>{u.email}</p>
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <span style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid rgba(99,102,241,0.4)', borderRadius: 20, padding: '4px 12px', color: '#a5b4fc', fontSize: 12, fontWeight: 600 }}>
+                          {userTasks.length} task{userTasks.length !== 1 ? 's' : ''} assigned
+                        </span>
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
     </div>
   )

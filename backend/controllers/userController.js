@@ -1,4 +1,5 @@
 const pool = require('../db');
+const bcrypt = require('bcrypt');
 
 // Create a new trainee account
 const createTrainee = async (req, res, next) => {
@@ -9,9 +10,13 @@ const createTrainee = async (req, res, next) => {
       return res.status(400).json({ error: 'Name, email, and password are required' });
     }
 
+    // Hash the password before saving it to the database
+    const saltRounds = 10;
+    const hashedPassword = await bcrypt.hash(password, saltRounds);
+
     const newTrainee = await pool.query(
-      'INSERT INTO users (name, email, password, role) VALUES ($1, $2, $3, $4) RETURNING id, name, email, role',
-      [name, email, password, 'trainee']
+      'INSERT INTO users (name, email, password_hash, role) VALUES ($1, $2, $3, $4) RETURNING id, name, email, role',
+      [name, email, hashedPassword, 'trainee']
     );
 
     res.status(201).json(newTrainee.rows[0]);

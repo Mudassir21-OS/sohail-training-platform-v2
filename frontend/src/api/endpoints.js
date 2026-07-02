@@ -1,16 +1,24 @@
+
 import client from "./client";
 
 export const authAPI = {
   register: (data) =>
-    client.post("/api/auth/register", data).then((r) => r.data),
+import client from "./client";
+
+export const authAPI = {
   login: (email, password) =>
     client.post("/api/auth/login", { email, password }).then((r) => r.data),
   me: () => client.get("/api/auth/me").then((r) => r.data),
 };
 
 export const usersAPI = {
+  createTrainee: (name, email, password) =>
+    client.post("/api/auth/register", { name, email, password, role: "trainee" }).then((r) => r.data),
   listTrainees: () =>
     client.get("/api/users", { params: { role: "trainee" } }).then((r) => r.data),
+  update: (id, data) =>
+    client.put(`/api/users/${id}`, data).then((r) => r.data),
+  remove: (id) => client.delete(`/api/users/${id}`),
 };
 
 export const tasksAPI = {

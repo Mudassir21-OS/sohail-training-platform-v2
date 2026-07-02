@@ -11,14 +11,10 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     const storedToken = localStorage.getItem("token");
     const storedUser = localStorage.getItem("user");
-
     if (storedToken && storedUser) {
       setToken(storedToken);
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch {
-        localStorage.removeItem("user");
-      }
+      try { setUser(JSON.parse(storedUser)); }
+      catch { localStorage.removeItem("user"); }
     }
     setLoading(false);
   }, []);
@@ -43,29 +39,21 @@ export function AuthProvider({ children }) {
     return userData;
   }
 
-  async function register(data) {
-    const { user: userData, token: jwt } = await authAPI.register(data);
-    persist(userData, jwt);
-    return userData;
-  }
-
   function logout() {
     clear();
     window.location.href = "/login";
   }
 
-  const value = {
-    user,
-    token,
-    loading,
-    isAdmin: user?.role === "admin",
-    isTrainee: user?.role === "trainee",
-    login,
-    logout,
-    register,
-  };
-
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{
+      user, token, loading,
+      isAdmin: user?.role === "admin",
+      isTrainee: user?.role === "trainee",
+      login, logout
+    }}>
+      {children}
+    </AuthContext.Provider>
+  );
 }
 
 export function useAuth() {

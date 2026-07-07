@@ -1,30 +1,71 @@
 -- =====================================================
--- Sohail Training Platform v2
--- Data Layer: Sample Seed Data
+-- Sohail Training Platform v2 - Week 3
+-- Data Layer: Sample Team Task Seed Data
 -- Author: Mudassir Shahab
 -- =====================================================
 
--- Insert sample users
+-- Seed users
+-- Password hash below is for testing only.
+-- In the real app, passwords should be hashed by the backend/auth layer.
 INSERT INTO users (name, email, password_hash, role)
 VALUES
 ('Admin User', 'admin@sohail.com', '$2b$10$/Yxwp3IsPnC6vgdMF0kesOazgU4eWAFgomPzevHzpKLdTqnSsc8R.', 'admin'),
-('Ali Trainee', 'ali@sohail.com', '$2b$10$fTDq/3bZ/UwAU2zTZYqWwuEhIkJlWRIevB4VWSoZv14tueqZMUE3q', 'trainee'),
-('Sara Trainee', 'sara@sohail.com', '$2b$10$2DmznfGo4IeL8F9cvezffeIwOk/K3TgEpuFj.fL6xDx1XT.iE6NpC', 'trainee');
+('Emna Daly', 'emna@sohail.com', '$2b$10$/Yxwp3IsPnC6vgdMF0kesOazgU4eWAFgomPzevHzpKLdTqnSsc8R.', 'trainee'),
+('Abdul Rahim', 'abdul@sohail.com', '$2b$10$/Yxwp3IsPnC6vgdMF0kesOazgU4eWAFgomPzevHzpKLdTqnSsc8R.', 'trainee'),
+('Mayaz Bakoura', 'mayaz@sohail.com', '$2b$10$/Yxwp3IsPnC6vgdMF0kesOazgU4eWAFgomPzevHzpKLdTqnSsc8R.', 'trainee'),
+('Mudassir Shahab', 'mudassir@sohail.com', '$2b$10$/Yxwp3IsPnC6vgdMF0kesOazgU4eWAFgomPzevHzpKLdTqnSsc8R.', 'trainee');
 
--- Insert sample tasks
-INSERT INTO tasks (title, description, created_by, assigned_to, deadline, status)
+-- Seed one team task
+INSERT INTO team_tasks (title, description, created_by, deadline, status)
 VALUES
-('Build Login Page', 'Create a login page for the training platform.', 1, 2, '2026-06-25', 'graded'),
-('Create Submission Form', 'Build a form where trainees can submit assigned tasks.', 1, 3, '2026-06-25', 'submitted'),
-('Database Schema Design', 'Design relational tables and foreign key relationships.', 1, 2, '2026-06-25', 'assigned');
+(
+    'Week 3 Team Task - Team Submission Workflow',
+    'Build a team-based task workflow where each member has their own assigned part, submission link, and individual grade.',
+    1,
+    '2026-07-10',
+    'submitted'
+);
 
--- Insert sample submissions
-INSERT INTO submissions (task_id, trainee_id, submission_text, file_url)
+-- Assign members to the team task
+INSERT INTO task_members (task_id, user_id, part, submission_link, score, feedback, submitted_at, graded_at)
 VALUES
-(1, 2, 'I completed the login page with email and password fields.', NULL),
-(2, 3, 'I completed the submission form and connected it to frontend state.', NULL);
-
--- Insert sample scores
-INSERT INTO scores (submission_id, graded_by, score, feedback)
-VALUES
-(1, 1, 88, 'Good work. Login page is functional and clean.');
+(
+    1,
+    2,
+    'Frontend Create Team Task UI',
+    'https://example.com/emna-frontend-submission',
+    88,
+    'Good frontend implementation and UI flow.',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+),
+(
+    1,
+    3,
+    'Backend Team Task API',
+    'https://example.com/abdul-backend-submission',
+    90,
+    'Backend routes and API structure are well implemented.',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+),
+(
+    1,
+    4,
+    'Auth and Role Protection',
+    'https://example.com/mayaz-auth-submission',
+    87,
+    'Good role-based access control for team task permissions.',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+),
+(
+    1,
+    5,
+    'Data Layer Schema and JOIN Queries',
+    'https://example.com/mudassir-data-layer-submission',
+    92,
+    'Strong database design with clear relationships and JOIN queries.',
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
+);

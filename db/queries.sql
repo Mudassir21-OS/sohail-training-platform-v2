@@ -1,100 +1,141 @@
 -- =====================================================
--- Sohail Training Platform v2
--- Data Layer: Dashboard JOIN Queries
+-- Sohail Training Platform v2 - Week 3
+-- Data Layer: Team Task JOIN Queries
 -- Author: Mudassir Shahab
 -- =====================================================
 
 -- =========================
--- 1. Admin Dashboard View
--- Shows each task with assigned trainee, submission, score, and feedback
+-- 1. Show all team tasks
 -- =========================
 SELECT
-    tasks.id AS task_id,
-    tasks.title AS task_title,
-    tasks.description AS task_description,
+    tt.id AS team_task_id,
+    tt.title,
+    tt.description,
     admin_user.name AS created_by_admin,
-    trainee_user.name AS assigned_trainee,
-    trainee_user.email AS trainee_email,
-    tasks.deadline,
-    tasks.status AS task_status,
-    submissions.submission_text,
-    submissions.submitted_at,
-    scores.score,
-    scores.feedback,
-    scores.graded_at
-FROM tasks
+    tt.deadline,
+    tt.status,
+    tt.created_at
+FROM team_tasks AS tt
 JOIN users AS admin_user
-    ON tasks.created_by = admin_user.id
-JOIN users AS trainee_user
-    ON tasks.assigned_to = trainee_user.id
-LEFT JOIN submissions
-    ON tasks.id = submissions.task_id
-    AND tasks.assigned_to = submissions.trainee_id
-LEFT JOIN scores
-    ON submissions.id = scores.submission_id
-ORDER BY tasks.created_at DESC;
+    ON tt.created_by = admin_user.id
+ORDER BY tt.created_at DESC;
 
 -- =========================
--- 2. Trainee Dashboard View
--- Shows tasks assigned to one trainee
--- Replace 2 with the logged-in trainee user ID
+-- 2. Show all members assigned to team tasks
 -- =========================
 SELECT
-    tasks.id AS task_id,
-    tasks.title AS task_title,
-    tasks.description,
-    tasks.deadline,
-    tasks.status,
-    submissions.submission_text,
-    submissions.submitted_at,
-    scores.score,
-    scores.feedback
-FROM tasks
-LEFT JOIN submissions
-    ON tasks.id = submissions.task_id
-    AND tasks.assigned_to = submissions.trainee_id
-LEFT JOIN scores
-    ON submissions.id = scores.submission_id
-WHERE tasks.assigned_to = 2
-ORDER BY tasks.deadline ASC;
+    tt.id AS team_task_id,
+    tt.title AS team_task_title,
+    u.id AS member_id,
+    u.name AS member_name,
+    u.email AS member_email,
+    tm.part,
+    tm.submission_link,
+    tm.score,
+    tm.feedback
+FROM team_tasks AS tt
+JOIN task_members AS tm
+    ON tt.id = tm.task_id
+JOIN users AS u
+    ON tm.user_id = u.id
+ORDER BY tt.id, u.name;
 
 -- =========================
--- 3. Grading View
--- Shows submitted tasks waiting for grading
+-- 3. Full team task view
+-- Shows one team task with all members, parts, submissions, scores, and feedback
 -- =========================
 SELECT
-    submissions.id AS submission_id,
-    tasks.title AS task_title,
-    trainee_user.name AS trainee_name,
-    trainee_user.email AS trainee_email,
-    submissions.submission_text,
-    submissions.submitted_at,
-    tasks.status
-FROM submissions
-JOIN tasks
-    ON submissions.task_id = tasks.id
-JOIN users AS trainee_user
-    ON submissions.trainee_id = trainee_user.id
-LEFT JOIN scores
-    ON submissions.id = scores.submission_id
-WHERE scores.id IS NULL
-ORDER BY submissions.submitted_at DESC;
+    tt.id AS team_task_id,
+    tt.title AS team_task_title,
+    tt.description AS team_task_description,
+    tt.deadline,
+    tt.status AS team_task_status,
+
+    admin_user.name AS created_by_admin,
+
+    u.id AS member_id,
+    u.name AS member_name,
+    u.email AS member_email,
+
+    tm.part AS assigned_part,
+    tm.submission_link,
+    tm.score,
+    tm.feedback,
+    tm.submitted_at,
+    tm.graded_at
+FROM team_tasks AS tt
+JOIN users AS admin_user
+    ON tt.created_by = admin_user.id
+JOIN task_members AS tm
+    ON tt.id = tm.task_id
+JOIN users AS u
+    ON tm.user_id = u.id
+ORDER BY tt.created_at DESC, u.name;
 
 -- =========================
--- 4. Score Summary
--- Shows average score per trainee
+-- 4. Full view for one specific team task
+-- Replace 1 with the selected team task id
 -- =========================
 SELECT
-    users.id AS trainee_id,
-    users.name AS trainee_name,
-    users.email,
-    COUNT(scores.id) AS graded_submissions,
-    ROUND(AVG(scores.score), 2) AS average_score
-FROM users
-JOIN submissions
-    ON users.id = submissions.trainee_id
-JOIN scores
-    ON submissions.id = scores.submission_id
-WHERE users.role = 'trainee'
-GROUP BY users.id, users.name, users.email
-ORDER BY average_score DESC;
+    tt.id AS team_task_id,
+    tt.title AS team_task_title,
+    tt.description AS team_task_description,
+    tt.deadline,
+    tt.status AS team_task_status,
+
+    admin_user.name AS created_by_admin,
+
+    u.name AS member_name,
+    u.email AS member_email,
+    tm.part AS assigned_part,
+    tm.submission_link,
+    tm.score,
+    tm.feedback,
+    tm.submitted_at,
+    tm.graded_at
+FROM team_tasks AS tt
+JOIN users AS admin_user
+    ON tt.created_by = admin_user.id
+JOIN task_members AS tm
+    ON tt.id = tm.task_id
+JOIN users AS u
+    ON tm.user_id = u.id
+WHERE tt.id = 1
+ORDER BY u.name;
+
+-- =========================
+-- 5. Average team task score
+-- Shows average score for each team task
+-- =========================
+SELECT
+    tt.id AS team_task_id,
+    tt.title AS team_task_title,
+    COUNT(tm.id) AS total_members,
+    COUNT(tm.score) AS graded_members,
+    ROUND(AVG(tm.score), 2) AS average_team_score
+FROM team_tasks AS tt
+JOIN task_members AS tm
+    ON tt.id = tm.task_id
+GROUP BY tt.id, tt.title
+ORDER BY average_team_score DESC;
+
+-- =========================
+-- 6. Member performance across team tasks
+-- Shows each member's assigned parts and scores
+-- =========================
+SELECT
+    u.id AS member_id,
+    u.name AS member_name,
+    u.email AS member_email,
+    tt.title AS team_task_title,
+    tm.part,
+    tm.submission_link,
+    tm.score,
+    tm.feedback
+FROM users AS u
+JOIN task_members AS tm
+    ON u.id = tm.user_id
+JOIN team_tasks AS tt
+    ON tm.task_id = tt.id
+WHERE u.role = 'trainee'
+ORDER BY u.name, tt.created_at DESC;

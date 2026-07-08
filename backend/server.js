@@ -24,12 +24,14 @@ const taskRoutes = require('./routes/taskRoutes');
 const submissionRoutes = require('./routes/submissionRoutes');
 const userRoutes = require('./routes/userRoutes');
 const usersRoutes = require('./routes/users');
+const teamTasksRouter = require('./routes/team-tasks');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', usersRoutes);
 app.use('/api/tasks', taskRoutes);
 app.use('/api', submissionRoutes);
 app.use('/api/admin', userRoutes);
+app.use('/api/team-tasks', teamTasksRouter);
 // ------------------------------
 
 // Global Error Handler

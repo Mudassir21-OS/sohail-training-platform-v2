@@ -112,16 +112,31 @@ router.put('/:taskId/members/:userId/grade', authenticate, requireAdmin, async (
 });
 
 // GET /api/team-tasks
-// List all team tasks (Basic overview)
+// List team tasks (Admins see all, Trainees see only their assigned parts)
 router.get('/', authenticate, async (req, res) => {
   try {
-    const query = `
-      SELECT id, title, description, deadline, status, created_at
-      FROM team_tasks
-      ORDER BY created_at DESC;
-    `;
-    const result = await pool.query(query);
-    res.json(result.rows);
+    if (req.user.role === 'admin') {
+      const query = `
+        SELECT id, title, description, deadline, status, created_at
+        FROM team_tasks
+        ORDER BY created_at DESC;
+      `;
+      const result = await pool.query(query);
+      return res.json(result.rows);
+    } else {
+      // Trainees only see tasks they are assigned to, along with their specific part
+      const query = `
+        SELECT 
+          t.id, t.title, t.description, t.deadline, t.status, t.created_at,
+          tm.part, tm.submission_link, tm.score, tm.feedback, tm.submitted_at, tm.graded_at
+        FROM team_tasks t
+        JOIN task_members tm ON t.id = tm.task_id
+        WHERE tm.user_id = $1
+        ORDER BY t.created_at DESC;
+      `;
+      const result = await pool.query(query, [req.user.id]);
+      return res.json(result.rows);
+    }
   } catch (error) {
     console.error('Error fetching team tasks:', error);
     res.status(500).json({ error: 'Failed to fetch team tasks.' });

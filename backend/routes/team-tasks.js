@@ -1,22 +1,19 @@
 const express = require('express');
 const router = express.Router();
 const pool = require('../db'); // Adjust this path to your db.js
-const { authenticate, requireAdmin } = require('../middleware/auth'); // Fixed import!
+const { authenticate, requireAdmin } = require('../middleware/auth'); 
 
 // POST /api/team-tasks
 // Create a team task and assign multiple members (Transaction)
-router.post('/', authenticate, requireAdmin, async (req, res) => { // Fixed middleware!
+router.post('/', authenticate, requireAdmin, async (req, res) => { 
   const { title, description, deadline, members } = req.body;
-  const created_by = req.user.id; // Pulled directly from the authenticated admin's JWT token
+  const created_by = req.user.id; 
 
-  // Acquire a dedicated client from the pool for the transaction
   const client = await pool.connect();
 
   try {
-    // Start the SQL Transaction
     await client.query('BEGIN');
 
-    // 1. Insert the main shared task into team_tasks
     const taskInsertQuery = `
       INSERT INTO team_tasks (title, description, created_by, deadline) 
       VALUES ($1, $2, $3, $4) 
@@ -25,7 +22,6 @@ router.post('/', authenticate, requireAdmin, async (req, res) => { // Fixed midd
     const taskResult = await client.query(taskInsertQuery, [title, description, created_by, deadline]);
     const newTask = taskResult.rows[0];
 
-    // 2. Loop through the members array and insert each into task_members
     const memberInsertQuery = `
       INSERT INTO task_members (task_id, user_id, part) 
       VALUES ($1, $2, $3);
@@ -35,7 +31,6 @@ router.post('/', authenticate, requireAdmin, async (req, res) => { // Fixed midd
       await client.query(memberInsertQuery, [newTask.id, member.user_id, member.part]);
     }
 
-    // Commit the transaction to save to the database permanently
     await client.query('COMMIT');
 
     res.status(201).json({ 
@@ -44,12 +39,10 @@ router.post('/', authenticate, requireAdmin, async (req, res) => { // Fixed midd
     });
 
   } catch (error) {
-    // If ANY insert fails, rollback everything
     await client.query('ROLLBACK');
     console.error('Error creating team task:', error);
     res.status(500).json({ error: 'Failed to create team task.' });
   } finally {
-    // Always release the client back to the pool
     client.release();
   }
 });
@@ -60,7 +53,6 @@ router.put('/:taskId/members/:userId/submit', authenticate, async (req, res) => 
   const { taskId, userId } = req.params;
   const { submission_link } = req.body;
 
-  // Security check: Only the assigned user (or an admin) can submit their own part
   if (req.user.id !== parseInt(userId) && req.user.role !== 'admin') {
       return res.status(403).json({ error: 'Unauthorized to submit for this user.' });
   }
@@ -87,7 +79,7 @@ router.put('/:taskId/members/:userId/submit', authenticate, async (req, res) => 
 
 // PUT /api/team-tasks/:taskId/members/:userId/grade
 // Admins use this to grade a specific trainee's part
-router.put('/:taskId/members/:userId/grade', authenticate, requireAdmin, async (req, res) => { // Fixed middleware!
+router.put('/:taskId/members/:userId/grade', authenticate, requireAdmin, async (req, res) => { 
   const { taskId, userId } = req.params;
   const { score, feedback } = req.body;
 
@@ -112,31 +104,72 @@ router.put('/:taskId/members/:userId/grade', authenticate, requireAdmin, async (
 });
 
 // GET /api/team-tasks
-// List team tasks (Admins see all, Trainees see only their assigned parts)
+// List team tasks (Now completely formatted with Emna's nested members array!)
 router.get('/', authenticate, async (req, res) => {
   try {
+    let query;
+    let params = [];
+
     if (req.user.role === 'admin') {
-      const query = `
-        SELECT id, title, description, deadline, status, created_at
-        FROM team_tasks
-        ORDER BY created_at DESC;
-      `;
-      const result = await pool.query(query);
-      return res.json(result.rows);
-    } else {
-      // Trainees only see tasks they are assigned to, along with their specific part
-      const query = `
+      // Admins pull all tasks and ALL members
+      query = `
         SELECT 
-          t.id, t.title, t.description, t.deadline, t.status, t.created_at,
-          tm.part, tm.submission_link, tm.score, tm.feedback, tm.submitted_at, tm.graded_at
-        FROM team_tasks t
-        JOIN task_members tm ON t.id = tm.task_id
-        WHERE tm.user_id = $1
-        ORDER BY t.created_at DESC;
+          tt.id, tt.title, tt.description, tt.deadline, tt.status, tt.created_at,
+          tm.user_id, tm.part, tm.submission_link, tm.score, tm.feedback, tm.submitted_at, tm.graded_at,
+          u.name
+        FROM team_tasks tt
+        LEFT JOIN task_members tm ON tt.id = tm.task_id
+        LEFT JOIN users u ON tm.user_id = u.id
+        ORDER BY tt.created_at DESC;
       `;
-      const result = await pool.query(query, [req.user.id]);
-      return res.json(result.rows);
+    } else {
+      // Trainees pull only their tasks, and the members array will contain just their assignment
+      query = `
+        SELECT 
+          tt.id, tt.title, tt.description, tt.deadline, tt.status, tt.created_at,
+          tm.user_id, tm.part, tm.submission_link, tm.score, tm.feedback, tm.submitted_at, tm.graded_at,
+          u.name
+        FROM team_tasks tt
+        JOIN task_members tm ON tt.id = tm.task_id
+        JOIN users u ON tm.user_id = u.id
+        WHERE tm.user_id = $1
+        ORDER BY tt.created_at DESC;
+      `;
+      params = [req.user.id];
     }
+
+    const result = await pool.query(query, params);
+
+    // Emna's grouping logic applied exactly as requested
+    const grouped = {};
+    result.rows.forEach(row => {
+      if (!grouped[row.id]) {
+        grouped[row.id] = {
+          id: row.id,
+          title: row.title,
+          description: row.description,
+          deadline: row.deadline,
+          status: row.status,
+          created_at: row.created_at,
+          members: []
+        };
+      }
+      if (row.user_id) {
+        grouped[row.id].members.push({
+          user_id: row.user_id,
+          name: row.name,
+          part: row.part,
+          submission_link: row.submission_link,
+          score: row.score,
+          feedback: row.feedback,
+          submitted_at: row.submitted_at,
+          graded_at: row.graded_at
+        });
+      }
+    });
+
+    return res.json(Object.values(grouped));
+
   } catch (error) {
     console.error('Error fetching team tasks:', error);
     res.status(500).json({ error: 'Failed to fetch team tasks.' });
@@ -144,7 +177,7 @@ router.get('/', authenticate, async (req, res) => {
 });
 
 // GET /api/team-tasks/:id
-// Get full team task view (The main JOIN query for the frontend)
+// Get full team task view 
 router.get('/:id', authenticate, async (req, res) => {
   const { id } = req.params;
   
@@ -168,7 +201,6 @@ router.get('/:id', authenticate, async (req, res) => {
         return res.status(404).json({ error: 'Team task not found.' });
     }
 
-    // Transform the flat SQL rows into a clean, nested JSON object for the frontend UI
     const taskDetails = {
         id: result.rows[0].task_id,
         title: result.rows[0].title,

@@ -1,7 +1,9 @@
+
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
+import TeamTaskForm from '../components/TeamTaskForm'
 
 const BASE = 'https://sohail-backend-api.onrender.com'
 
@@ -11,6 +13,7 @@ export default function AdminDashboard() {
   const [tasks, setTasks] = useState([])
   const [submissions, setSubmissions] = useState([])
   const [users, setUsers] = useState([])
+  const [teamTasks, setTeamTasks] = useState([])
   const [title, setTitle] = useState('')
   const [description, setDescription] = useState('')
   const [assignedTo, setAssignedTo] = useState('')
@@ -18,12 +21,12 @@ export default function AdminDashboard() {
   const [feedback, setFeedback] = useState({})
   const [score, setScore] = useState({})
   const [activeTab, setActiveTab] = useState('tasks')
-
-  // Add-trainee form state
   const [traineeName, setTraineeName] = useState('')
   const [traineeEmail, setTraineeEmail] = useState('')
   const [traineePassword, setTraineePassword] = useState('')
-  const [traineeMsg, setTraineeMsg] = useState(null) // { type: 'success'|'error', text }
+  const [traineeMsg, setTraineeMsg] = useState(null)
+  const [memberScores, setMemberScores] = useState({})
+  const [memberFeedback, setMemberFeedback] = useState({})
 
   const headers = { Authorization: `Bearer ${token}` }
 
@@ -40,6 +43,10 @@ export default function AdminDashboard() {
       setSubmissions(s.data)
       setUsers(u.data)
     } catch (e) { console.error(e) }
+    try {
+      const tt = await axios.get(`${BASE}/api/team-tasks`, { headers })
+      setTeamTasks(tt.data)
+    } catch (e) { console.error('team tasks:', e) }
   }
 
   async function createTask() {
@@ -65,10 +72,8 @@ export default function AdminDashboard() {
     }
     try {
       await axios.post(`${BASE}/api/admin/trainees`, {
-        name: traineeName,
-        email: traineeEmail,
-        password: traineePassword,
-        role: 'trainee'
+        name: traineeName, email: traineeEmail,
+        password: traineePassword, role: 'trainee'
       }, { headers })
       setTraineeName(''); setTraineeEmail(''); setTraineePassword('')
       setTraineeMsg({ type: 'success', text: `Trainee "${traineeName}" added successfully!` })
@@ -77,6 +82,17 @@ export default function AdminDashboard() {
       const msg = e.response?.data?.error?.message || 'Failed to add trainee.'
       setTraineeMsg({ type: 'error', text: msg })
     }
+  }
+
+  async function gradeMember(taskId, userId) {
+    const key = `${taskId}-${userId}`
+    try {
+      await axios.put(`${BASE}/api/team-tasks/${taskId}/members/${userId}/grade`, {
+        score: Number(memberScores[key]),
+        feedback: memberFeedback[key]
+      }, { headers })
+      fetchAll()
+    } catch (e) { console.error(e) }
   }
 
   const badge = {
@@ -91,12 +107,14 @@ export default function AdminDashboard() {
     color: '#fff', fontSize: 14, boxSizing: 'border-box', marginBottom: 14, outline: 'none'
   }
 
-  const tabs = ['tasks', 'submissions', 'create', 'trainees']
+  const tabs = ['tasks', 'submissions', 'create', 'trainees', 'teamtasks', 'createteam']
   const tabLabels = {
     tasks: '📋 Tasks',
     submissions: '📤 Submissions',
     create: '➕ Create Task',
-    trainees: '👥 Manage Trainees'
+    trainees: '👥 Manage Trainees',
+    teamtasks: '🤝 Team Tasks',
+    createteam: '➕ Create Team Task'
   }
 
   return (
@@ -121,16 +139,17 @@ export default function AdminDashboard() {
       <div style={{ maxWidth: 900, margin: '0 auto', padding: '40px 24px' }}>
 
         {/* Stats */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16, marginBottom: 36 }}>
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 16, marginBottom: 36 }}>
           {[
-            { label: 'Total Tasks', value: tasks.length, icon: '📋', color: '#6366f1' },
-            { label: 'Submissions', value: submissions.length, icon: '📤', color: '#3b82f6' },
-            { label: 'Trainees', value: users.length, icon: '👥', color: '#8b5cf6' }
+            { label: 'Total Tasks', value: tasks.length, icon: '📋' },
+            { label: 'Submissions', value: submissions.length, icon: '📤' },
+            { label: 'Trainees', value: users.length, icon: '👥' },
+            { label: 'Team Tasks', value: teamTasks.length, icon: '🤝' }
           ].map(stat => (
-            <div key={stat.label} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: 24 }}>
-              <div style={{ fontSize: 28, marginBottom: 8 }}>{stat.icon}</div>
-              <div style={{ color: '#fff', fontSize: 28, fontWeight: 700 }}>{stat.value}</div>
-              <div style={{ color: '#94a3b8', fontSize: 13 }}>{stat.label}</div>
+            <div key={stat.label} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: 20 }}>
+              <div style={{ fontSize: 24, marginBottom: 8 }}>{stat.icon}</div>
+              <div style={{ color: '#fff', fontSize: 26, fontWeight: 700 }}>{stat.value}</div>
+              <div style={{ color: '#94a3b8', fontSize: 12 }}>{stat.label}</div>
             </div>
           ))}
         </div>
@@ -139,7 +158,7 @@ export default function AdminDashboard() {
         <div style={{ display: 'flex', gap: 8, marginBottom: 28, flexWrap: 'wrap' }}>
           {tabs.map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)}
-              style={{ padding: '10px 22px', borderRadius: 10, border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 600,
+              style={{ padding: '10px 18px', borderRadius: 10, border: 'none', cursor: 'pointer', fontSize: 13, fontWeight: 600,
                 background: activeTab === tab ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : 'rgba(255,255,255,0.05)',
                 color: activeTab === tab ? '#fff' : '#94a3b8' }}>
               {tabLabels[tab]}
@@ -224,14 +243,12 @@ export default function AdminDashboard() {
           </div>
         )}
 
-        {/* Manage Trainees — NEW THIS WEEK */}
+        {/* Manage Trainees */}
         {activeTab === 'trainees' && (
           <div>
-            {/* Add Trainee Form */}
             <div style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: 32, marginBottom: 32 }}>
               <h2 style={{ color: '#fff', margin: '0 0 8px', fontSize: 22 }}>Add New Trainee</h2>
               <p style={{ color: '#94a3b8', margin: '0 0 24px', fontSize: 14 }}>Create a real account — the trainee can log in immediately with these credentials.</p>
-
               {traineeMsg && (
                 <div style={{
                   background: traineeMsg.type === 'success' ? 'rgba(16,185,129,0.1)' : 'rgba(239,68,68,0.1)',
@@ -242,37 +259,16 @@ export default function AdminDashboard() {
                   {traineeMsg.type === 'success' ? '✅ ' : '❌ '}{traineeMsg.text}
                 </div>
               )}
-
-              <input
-                placeholder="Full name"
-                value={traineeName}
-                onChange={e => { setTraineeName(e.target.value); setTraineeMsg(null) }}
-                style={inp}
-              />
-              <input
-                placeholder="Email address"
-                value={traineeEmail}
-                onChange={e => { setTraineeEmail(e.target.value); setTraineeMsg(null) }}
-                style={inp}
-              />
-              <input
-                placeholder="Password"
-                type="password"
-                value={traineePassword}
-                onChange={e => { setTraineePassword(e.target.value); setTraineeMsg(null) }}
-                style={inp}
-              />
+              <input placeholder="Full name" value={traineeName} onChange={e => { setTraineeName(e.target.value); setTraineeMsg(null) }} style={inp} />
+              <input placeholder="Email address" value={traineeEmail} onChange={e => { setTraineeEmail(e.target.value); setTraineeMsg(null) }} style={inp} />
+              <input placeholder="Password" type="password" value={traineePassword} onChange={e => { setTraineePassword(e.target.value); setTraineeMsg(null) }} style={inp} />
               <button onClick={addTrainee}
                 style={{ padding: '12px 32px', background: 'linear-gradient(135deg, #6366f1, #8b5cf6)', color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer', fontSize: 15, fontWeight: 700 }}>
                 Add Trainee
               </button>
             </div>
-
-            {/* Trainee List */}
             <div>
-              <h2 style={{ color: '#fff', margin: '0 0 20px', fontSize: 22 }}>
-                All Trainees <span style={{ color: '#64748b', fontWeight: 400, fontSize: 16 }}>({users.length})</span>
-              </h2>
+              <h2 style={{ color: '#fff', margin: '0 0 20px', fontSize: 22 }}>All Trainees <span style={{ color: '#64748b', fontWeight: 400, fontSize: 16 }}>({users.length})</span></h2>
               {users.length === 0 && (
                 <div style={{ textAlign: 'center', padding: 60, color: '#64748b' }}>
                   <div style={{ fontSize: 48, marginBottom: 16 }}>👥</div>
@@ -293,15 +289,89 @@ export default function AdminDashboard() {
                           <p style={{ color: '#64748b', margin: '2px 0 0', fontSize: 13 }}>{u.email}</p>
                         </div>
                       </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <span style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid rgba(99,102,241,0.4)', borderRadius: 20, padding: '4px 12px', color: '#a5b4fc', fontSize: 12, fontWeight: 600 }}>
-                          {userTasks.length} task{userTasks.length !== 1 ? 's' : ''} assigned
-                        </span>
-                      </div>
+                      <span style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid rgba(99,102,241,0.4)', borderRadius: 20, padding: '4px 12px', color: '#a5b4fc', fontSize: 12, fontWeight: 600 }}>
+                        {userTasks.length} task{userTasks.length !== 1 ? 's' : ''} assigned
+                      </span>
                     </div>
                   )
                 })}
               </div>
+            </div>
+          </div>
+        )}
+
+        {/* Create Team Task */}
+        {activeTab === 'createteam' && (
+          <TeamTaskForm token={token} users={users} onSuccess={fetchAll} />
+        )}
+
+        {/* Team Tasks List + Grading */}
+        {activeTab === 'teamtasks' && (
+          <div>
+            <h2 style={{ color: '#fff', margin: '0 0 20px', fontSize: 22 }}>Team Tasks</h2>
+            {teamTasks.length === 0 && (
+              <div style={{ textAlign: 'center', padding: 60, color: '#64748b' }}>
+                <div style={{ fontSize: 48, marginBottom: 16 }}>🤝</div>
+                <p style={{ fontSize: 16 }}>No team tasks yet. Create one using the tab above.</p>
+              </div>
+            )}
+            <div style={{ display: 'grid', gap: 20 }}>
+              {teamTasks.map(tt => (
+                <div key={tt.id} style={{ background: 'rgba(255,255,255,0.05)', border: '1px solid rgba(255,255,255,0.1)', borderRadius: 16, padding: 28 }}>
+                  <div style={{ marginBottom: 16 }}>
+                    <h3 style={{ color: '#fff', margin: '0 0 6px', fontSize: 19 }}>{tt.title}</h3>
+                    <p style={{ color: '#94a3b8', margin: '0 0 6px', fontSize: 14 }}>{tt.description}</p>
+                    <p style={{ color: '#64748b', fontSize: 13, margin: 0 }}>📅 Due {tt.deadline?.split('T')[0]}</p>
+                  </div>
+                  <div style={{ display: 'grid', gap: 12 }}>
+                    {(tt.members || []).map(member => {
+                      const key = `${tt.id}-${member.user_id}`
+                      return (
+                        <div key={member.user_id} style={{ background: 'rgba(0,0,0,0.2)', borderRadius: 12, padding: 18, border: '1px solid rgba(255,255,255,0.07)' }}>
+                          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                            <div>
+                              <span style={{ color: '#fff', fontWeight: 600, fontSize: 15 }}>{member.name || member.user_id}</span>
+                              <span style={{ color: '#6366f1', fontSize: 13, marginLeft: 10, background: 'rgba(99,102,241,0.15)', padding: '2px 10px', borderRadius: 12 }}>{member.part}</span>
+                            </div>
+                          </div>
+                          {member.submission_link ? (
+                            <div style={{ marginBottom: 12 }}>
+                              <p style={{ color: '#94a3b8', fontSize: 13, margin: '0 0 4px' }}>🔗 Submission:</p>
+                              <a href={member.submission_link} target="_blank" rel="noreferrer"
+                                style={{ color: '#818cf8', fontSize: 13, wordBreak: 'break-all' }}>
+                                {member.submission_link}
+                              </a>
+                            </div>
+                          ) : (
+                            <p style={{ color: '#475569', fontSize: 13, margin: '0 0 12px' }}>⏳ No submission yet</p>
+                          )}
+                          {member.score ? (
+                            <div style={{ background: 'rgba(16,185,129,0.1)', border: '1px solid rgba(16,185,129,0.3)', borderRadius: 8, padding: 12 }}>
+                              <p style={{ color: '#34d399', margin: 0, fontWeight: 700 }}>✅ Score: {member.score}/100</p>
+                              <p style={{ color: '#94a3b8', margin: '4px 0 0', fontSize: 13 }}>{member.feedback}</p>
+                            </div>
+                          ) : member.submission_link ? (
+                            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap' }}>
+                              <input placeholder="Score (0-100)"
+                                value={memberScores[key] || ''}
+                                onChange={e => setMemberScores({ ...memberScores, [key]: e.target.value })}
+                                style={{ padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.3)', color: '#fff', width: 140, outline: 'none' }} />
+                              <input placeholder="Feedback"
+                                value={memberFeedback[key] || ''}
+                                onChange={e => setMemberFeedback({ ...memberFeedback, [key]: e.target.value })}
+                                style={{ padding: '10px 14px', borderRadius: 10, border: '1px solid rgba(255,255,255,0.1)', background: 'rgba(0,0,0,0.3)', color: '#fff', flex: 1, outline: 'none' }} />
+                              <button onClick={() => gradeMember(tt.id, member.user_id)}
+                                style={{ padding: '10px 20px', background: 'linear-gradient(135deg, #10b981, #059669)', color: '#fff', border: 'none', borderRadius: 10, cursor: 'pointer', fontWeight: 700 }}>
+                                Grade
+                              </button>
+                            </div>
+                          ) : null}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         )}

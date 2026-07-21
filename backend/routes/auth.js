@@ -1,7 +1,7 @@
 const express = require("express");
 const bcrypt = require("bcrypt");
 const jwt = require("jsonwebtoken");
-const { authenticate } = require("../middleware/auth");
+const { authenticate, requireAdmin } = require("../middleware/auth");
 
 const router = express.Router();
 const JWT_SECRET = process.env.JWT_SECRET;
@@ -20,7 +20,8 @@ function publicUser(user) {
   return { id: user.id, name: user.name, email: user.email, role: user.role };
 }
 
-router.post("/register", async (req, res, next) => {
+// POST /api/auth/register — ADMIN ONLY
+router.post("/register", authenticate, requireAdmin, async (req, res, next) => {
   try {
     const { name, email, password, role } = req.body;
 
@@ -54,14 +55,13 @@ router.post("/register", async (req, res, next) => {
     );
 
     const user = result.rows[0];
-    const token = signToken(user);
-
-    return res.status(201).json({ user: publicUser(user), token });
+    return res.status(201).json({ user: publicUser(user) });
   } catch (err) {
     next(err);
   }
 });
 
+// POST /api/auth/login — public
 router.post("/login", async (req, res, next) => {
   try {
     const { email, password } = req.body;
@@ -73,14 +73,12 @@ router.post("/login", async (req, res, next) => {
     }
 
     const db = req.app.get("db");
-
     const result = await db.query(
       "SELECT id, name, email, role, password_hash FROM users WHERE email = $1",
       [email]
     );
 
     const user = result.rows[0];
-
     const passwordMatch = user
       ? await bcrypt.compare(password, user.password_hash)
       : await bcrypt.compare(password, "$2b$10$invalidhashpadding000000000000000");
@@ -98,6 +96,7 @@ router.post("/login", async (req, res, next) => {
   }
 });
 
+// GET /api/auth/me — protected
 router.get("/me", authenticate, async (req, res, next) => {
   try {
     const db = req.app.get("db");
@@ -105,13 +104,11 @@ router.get("/me", authenticate, async (req, res, next) => {
       "SELECT id, name, email, role FROM users WHERE id = $1",
       [req.user.id]
     );
-
     if (result.rows.length === 0) {
       return res.status(404).json({
         error: { message: "User not found", code: "NOT_FOUND" },
       });
     }
-
     return res.status(200).json(result.rows[0]);
   } catch (err) {
     next(err);

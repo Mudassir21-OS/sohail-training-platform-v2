@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
+import AnalyticsDashboard from '../components/AnalyticsDashboard'
 
 export default function AdminDashboard() {
   const { token, logout } = useAuth()
@@ -100,12 +101,12 @@ export default function AdminDashboard() {
 
         {/* Tabs */}
         <div style={{ display: 'flex', gap: 8, marginBottom: 28 }}>
-          {['tasks', 'submissions', 'create'].map(tab => (
+          {['tasks', 'submissions', 'create', 'analytics'].map(tab => (
             <button key={tab} onClick={() => setActiveTab(tab)}
               style={{ padding: '10px 22px', borderRadius: 10, border: 'none', cursor: 'pointer', fontSize: 14, fontWeight: 600,
                 background: activeTab === tab ? 'linear-gradient(135deg, #6366f1, #8b5cf6)' : 'rgba(255,255,255,0.05)',
                 color: activeTab === tab ? '#fff' : '#94a3b8' }}>
-              {tab === 'tasks' ? '📋 Tasks' : tab === 'submissions' ? '📤 Submissions' : '➕ Create Task'}
+              {tab === 'tasks' ? '📋 Tasks' : tab === 'submissions' ? '📤 Submissions' : tab === 'create' ? '➕ Create Task' : '📊 Analytics'}
             </button>
           ))}
         </div>
@@ -185,6 +186,11 @@ export default function AdminDashboard() {
               ))}
             </div>
           </div>
+        )}
+
+        {/* Analytics */}
+        {activeTab === 'analytics' && (
+          <AnalyticsDashboard token={token} />
         )}
       </div>
     </div>

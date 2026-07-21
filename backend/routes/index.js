@@ -1,12 +1,16 @@
-const authRouter = require("./auth");
+const authRouter      = require("./auth");
 const teamTasksRouter = require("./teamTasks");
-const { authenticate, requireAdmin, requireTrainee, requireTaskOwnership, requirePartOwnership } = require("../middleware/auth");
+const analyticsRouter = require("./analytics");
+const {
+  authenticate, requireAdmin, requireTrainee,
+  requireTaskOwnership, requirePartOwnership
+} = require("../middleware/auth");
 
 module.exports = function mountRoutes(app) {
   // Public
   app.use("/api/auth", authRouter);
 
-  // Protected — existing routes
+  // Protected — existing
   const usersRouter = require("./users");
   app.use("/api/users", authenticate, requireAdmin, usersRouter);
 
@@ -19,6 +23,9 @@ module.exports = function mountRoutes(app) {
   // Protected — Week 3: team tasks
   app.use("/api/team-tasks", authenticate, teamTasksRouter);
 
+  // Protected — Week 4: analytics (admin only, enforced per-route inside)
+  app.use("/api/analytics", authenticate, analyticsRouter);
+
   // Global error handler
   app.use((err, req, res, _next) => {
     console.error(err);
@@ -26,8 +33,8 @@ module.exports = function mountRoutes(app) {
   });
 };
 
-module.exports.authenticate = authenticate;
-module.exports.requireAdmin = requireAdmin;
-module.exports.requireTrainee = requireTrainee;
-module.exports.requireTaskOwnership = requireTaskOwnership;
-module.exports.requirePartOwnership = requirePartOwnership;
+module.exports.authenticate        = authenticate;
+module.exports.requireAdmin        = requireAdmin;
+module.exports.requireTrainee      = requireTrainee;
+module.exports.requireTaskOwnership  = requireTaskOwnership;
+module.exports.requirePartOwnership  = requirePartOwnership;

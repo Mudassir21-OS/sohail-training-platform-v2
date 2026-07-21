@@ -39,29 +39,52 @@ export const gradingAPI = {
     client.put(`/api/submissions/${submissionId}/grade`, { score, feedback }).then((r) => r.data),
 };
 
-// ── Week 3: Team Tasks ────────────────────────────────────────────────────────
-
 export const teamTasksAPI = {
-  // Admin: create a team task with parts
   create: (data) =>
     client.post("/api/team-tasks", data).then((r) => r.data),
-
-  // Admin: list all team tasks with all parts
   listAll: () =>
     client.get("/api/team-tasks").then((r) => r.data),
-
-  // Trainee: get ONLY their own parts (enforced server-side)
   myParts: () =>
     client.get("/api/team-tasks/my-parts").then((r) => r.data),
-
-  // Trainee: submit their part
   submitPart: (partId, submissionText, fileUrl = null) =>
     client.post(`/api/team-tasks/parts/${partId}/submit`, {
       submission_text: submissionText,
       file_url: fileUrl,
     }).then((r) => r.data),
-
-  // Admin: grade a part
   gradePart: (partId, score, feedback) =>
     client.put(`/api/team-tasks/parts/${partId}/grade`, { score, feedback }).then((r) => r.data),
+};
+
+// ── Week 4: Analytics (admin only — enforced server-side) ─────────────────────
+export const analyticsAPI = {
+  // High-level numbers: total trainees, tasks, submissions, avg score, submission rate
+  overview: () =>
+    client.get("/api/analytics/overview").then((r) => r.data),
+
+  // Per-trainee breakdown: tasks assigned, submitted, avg score
+  trainees: () =>
+    client.get("/api/analytics/trainees").then((r) => r.data),
+
+  // Per-task breakdown: status, score, on-time vs late
+  tasks: () =>
+    client.get("/api/analytics/tasks").then((r) => r.data),
+
+  // Submission timing: count of on_time / late / not_submitted
+  timing: () =>
+    client.get("/api/analytics/timing").then((r) => r.data),
+
+  // Score distribution: failing / passing / good / excellent buckets
+  scores: () =>
+    client.get("/api/analytics/scores").then((r) => r.data),
+
+  // Download CSV report — triggers file download in browser
+  exportCSV: () =>
+    client.get("/api/analytics/export", { responseType: "blob" }).then((r) => {
+      const url = window.URL.createObjectURL(new Blob([r.data]));
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "analytics_report.csv";
+      a.click();
+      window.URL.revokeObjectURL(url);
+    }),
 };

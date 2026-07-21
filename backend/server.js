@@ -2,6 +2,8 @@ require('dotenv').config();
 
 const express = require('express');
 const cors = require('cors');
+const http = require('http'); // Native Node module required for WebSockets
+const { Server } = require('socket.io'); // Socket.io server
 
 const app = express();
 
@@ -12,6 +14,47 @@ app.use(cors({
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
     allowedHeaders: ['Content-Type', 'Authorization']
 }));
+
+// --- WEBSOCKET SETUP SECTION ---
+// 1. Wrap the Express app in an HTTP server
+const server = http.createServer(app);
+
+// 2. Initialize Socket.io with matching CORS settings
+const io = new Server(server, {
+    cors: {
+        origin: '*', 
+        methods: ['GET', 'POST', 'PUT', 'DELETE'],
+        allowedHeaders: ['Content-Type', 'Authorization']
+    }
+});
+
+// 3. Make 'io' globally accessible inside your route files (via req.app.get('io'))
+app.set('io', io);
+
+// 4. Socket.io Authentication Middleware
+io.use((socket, next) => {
+    const token = socket.handshake.auth.token;
+    if (!token) {
+        return next(new Error("Authentication error: No token provided"));
+    }
+    
+    // TODO: Verify the JWT token here. Mocking user ID 6 for current testing based on Mudassir's queries.
+    const decodedUserId = 6; 
+    
+    // Assign the user to a private room based on their ID for targeted notifications
+    socket.join(`user_${decodedUserId}`);
+    next();
+});
+
+// 5. Connection Listener
+io.on('connection', (socket) => {
+    console.log(`User connected with socket ID: ${socket.id}`);
+
+    socket.on('disconnect', () => {
+        console.log('User disconnected');
+    });
+});
+// -------------------------------
 
 // Health Check
 app.get('/api/health', (req, res) => {
@@ -25,6 +68,8 @@ const submissionRoutes = require('./routes/submissionRoutes');
 const userRoutes = require('./routes/userRoutes');
 const usersRoutes = require('./routes/users');
 const teamTasksRouter = require('./routes/team-tasks');
+const analyticsRoutes = require('./routes/analytics');
+const notificationRoutes = require('./routes/notifications');
 
 app.use('/api/auth', authRoutes);
 app.use('/api/users', usersRoutes);
@@ -32,6 +77,8 @@ app.use('/api/tasks', taskRoutes);
 app.use('/api', submissionRoutes);
 app.use('/api/admin', userRoutes);
 app.use('/api/team-tasks', teamTasksRouter);
+app.use('/api/analytics', analyticsRoutes);
+app.use('/api/notifications', notificationRoutes);
 // ------------------------------
 
 // Global Error Handler
@@ -51,6 +98,7 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, () => {
-    console.log(`Backend Core running on port ${PORT}`);
+// IMPORTANT: Replaced app.listen with server.listen to start both Express and Socket.io
+server.listen(PORT, () => {
+    console.log(`Backend Core running on port ${PORT} with WebSockets enabled`);
 });

@@ -19,8 +19,37 @@ const createTask = async (req, res, next) => {
              VALUES ($1, $2, $3, $4, $5, 'assigned') RETURNING *`,
             [title, description, req.user.id, assigned_to, deadline]
         );
+        
+        const newTask = result.rows[0];
 
-        res.status(201).json(result.rows[0]);
+        // 1. Insert the notification into the database
+        const notifQuery = `
+            INSERT INTO notifications (recipient_id, actor_id, type, title, message, payload, related_task_id)
+            VALUES ($1, $2, 'task_assigned', 'New Task Assigned', 'You have been assigned a new task.', $3, $4)
+            RETURNING id;
+        `;
+        const notifResult = await pool.query(notifQuery, [
+            assigned_to,
+            req.user.id,
+            { source: 'task_assignment' },
+            newTask.id
+        ]);
+
+        // 2. Emit the real-time socket notification
+        const io = req.app.get('io');
+        if (io) {
+            io.to(`user_${assigned_to}`).emit('new_notification', {
+                id: notifResult.rows[0].id,
+                type: 'task_assigned',
+                title: 'New Task Assigned',
+                message: 'You have been assigned a new task.',
+                payload: { source: 'task_assignment' },
+                is_read: false,
+                created_at: new Date()
+            });
+        }
+
+        res.status(201).json(newTask);
     } catch (err) {
         next(err);
     }

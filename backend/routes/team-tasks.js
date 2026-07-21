@@ -28,7 +28,35 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
     `;
     
     for (const member of members) {
+      // 1. Insert the task assignment
       await client.query(memberInsertQuery, [newTask.id, member.user_id, member.part]);
+
+      // 2. Insert the notification into the database
+      const notifQuery = `
+        INSERT INTO notifications (recipient_id, actor_id, type, title, message, payload, related_team_task_id)
+        VALUES ($1, $2, 'team_task_assigned', 'New Team Task Assigned', 'You have been assigned a part in a team task.', $3, $4)
+        RETURNING id;
+      `;
+      const notifResult = await client.query(notifQuery, [
+        member.user_id, 
+        created_by, 
+        { part: member.part }, 
+        newTask.id
+      ]);
+
+      // 3. Emit the real-time socket notification
+      const io = req.app.get('io');
+      if (io) {
+          io.to(`user_${member.user_id}`).emit('new_notification', {
+              id: notifResult.rows[0].id,
+              type: 'team_task_assigned',
+              title: 'New Team Task Assigned',
+              message: 'You have been assigned a part in a team task.',
+              payload: { part: member.part },
+              is_read: false,
+              created_at: new Date()
+          });
+      }
     }
 
     await client.query('COMMIT');
@@ -82,6 +110,7 @@ router.put('/:taskId/members/:userId/submit', authenticate, async (req, res) => 
 router.put('/:taskId/members/:userId/grade', authenticate, requireAdmin, async (req, res) => { 
   const { taskId, userId } = req.params;
   const { score, feedback } = req.body;
+  const actor_id = req.user.id; // Added to capture the admin grading the task
 
   try {
     const updateQuery = `
@@ -94,6 +123,33 @@ router.put('/:taskId/members/:userId/grade', authenticate, requireAdmin, async (
 
     if (result.rows.length === 0) {
         return res.status(404).json({ error: 'Task assignment not found.' });
+    }
+
+    // 1. Insert the grade notification into the database
+    const notifQuery = `
+      INSERT INTO notifications (recipient_id, actor_id, type, title, message, payload, related_team_task_id)
+      VALUES ($1, $2, 'grade_posted', 'New Grade Posted', 'Your team task part has been graded.', $3, $4)
+      RETURNING id;
+    `;
+    const notifResult = await pool.query(notifQuery, [
+      userId, 
+      actor_id, 
+      { score: score }, 
+      taskId
+    ]);
+
+    // 2. Emit the real-time socket notification
+    const io = req.app.get('io');
+    if (io) {
+        io.to(`user_${userId}`).emit('new_notification', {
+            id: notifResult.rows[0].id,
+            type: 'grade_posted',
+            title: 'New Grade Posted',
+            message: 'Your team task part has been graded.',
+            payload: { score: score },
+            is_read: false,
+            created_at: new Date()
+        });
     }
 
     res.json({ message: 'Part graded successfully', part: result.rows[0] });

@@ -27,9 +27,9 @@ export default function AnalyticsDashboard({ token }) {
     setError(null);
     try {
       const [summaryRes, trendRes, traineesRes] = await Promise.all([
-        fetch("/api/analytics/summary", { headers: authHeaders }),
-        fetch("/api/analytics/submission-trend?days=30", { headers: authHeaders }),
-        fetch("/api/analytics/trainees", { headers: authHeaders }),
+        fetch("https://sohail-backend-api.onrender.com/api/analytics/summary", { headers: authHeaders }),
+        fetch("https://sohail-backend-api.onrender.com/api/analytics/submission-trend?days=30", { headers: authHeaders }),
+        fetch("https://sohail-backend-api.onrender.com/api/analytics/trainees", { headers: authHeaders }),
       ]);
 
       if (!summaryRes.ok || !trendRes.ok || !traineesRes.ok) {

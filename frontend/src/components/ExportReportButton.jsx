@@ -17,9 +17,10 @@ export default function ExportReportButton({ token, format = "csv" }) {
     setStatus("loading");
     setErrorMsg("");
     try {
-      const res = await fetch(`/api/analytics/export?format=${format}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      const res = await fetch(
+        `https://sohail-backend-api.onrender.com/api/analytics/export?format=${format}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
 
       if (!res.ok) {
         throw new Error(`Export failed (${res.status})`);

@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
+import NotificationBell from '../components/NotificationBell'
 
 const BASE = 'https://sohail-backend-api.onrender.com'
 
@@ -76,6 +77,7 @@ export default function TraineeDashboard() {
           <span style={{ color: '#fff', fontWeight: 700, fontSize: 18 }}>Sohail Training</span>
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+          <NotificationBell token={token} />
           <div style={{ background: 'rgba(99,102,241,0.2)', border: '1px solid rgba(99,102,241,0.4)', borderRadius: 20, padding: '4px 14px' }}>
             <span style={{ color: '#a5b4fc', fontSize: 13, fontWeight: 600 }}>Trainee</span>
           </div>

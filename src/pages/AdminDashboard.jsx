@@ -1,8 +1,8 @@
-
 import { useState, useEffect } from 'react'
 import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
+import AnalyticsDashboard from '../components/AnalyticsDashboard'
 import TeamTaskForm from '../components/TeamTaskForm'
 
 const BASE = 'https://sohail-backend-api.onrender.com'
@@ -107,14 +107,15 @@ export default function AdminDashboard() {
     color: '#fff', fontSize: 14, boxSizing: 'border-box', marginBottom: 14, outline: 'none'
   }
 
-  const tabs = ['tasks', 'submissions', 'create', 'trainees', 'teamtasks', 'createteam']
+  const tabs = ['tasks', 'submissions', 'create', 'trainees', 'teamtasks', 'createteam', 'analytics']
   const tabLabels = {
     tasks: '📋 Tasks',
     submissions: '📤 Submissions',
     create: '➕ Create Task',
     trainees: '👥 Manage Trainees',
     teamtasks: '🤝 Team Tasks',
-    createteam: '➕ Create Team Task'
+    createteam: '➕ Create Team Task',
+    analytics: '📊 Analytics'
   }
 
   return (
@@ -374,6 +375,11 @@ export default function AdminDashboard() {
               ))}
             </div>
           </div>
+        )}
+
+        {/* Analytics */}
+        {activeTab === 'analytics' && (
+          <AnalyticsDashboard token={token} />
         )}
 
       </div>

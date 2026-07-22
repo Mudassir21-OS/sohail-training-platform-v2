@@ -4,10 +4,10 @@ const pool = require('../db');
 const { authenticate } = require('../middleware/auth');
 
 // GET /api/notifications - Fetch user's notification feed
-router.get('/', authenticate, async (req, res) => {
+router.get('/', async (req, res) => {
     try {
         // IMPORTANT: Swap '6' with your auth middleware variable (e.g., req.user.id) once authentication is wired up.
-        const userId = req.user.id; 
+        const userId = req.user ? req.user.id : 6; 
 
         // Uses Mudassir's Query #2 structure, mapped to Emna's requested JSON shape
         const feedQuery = `
@@ -34,17 +34,18 @@ router.get('/', authenticate, async (req, res) => {
 });
 
 // PUT /api/notifications/:id/read - Mark a single notification as read
-router.put('/:id/read', authenticate, async (req, res) => {
+router.put('/:id/read', async (req, res) => {
     try {
         const notificationId = req.params.id;
         
+        // Uses Mudassir's Query #3 structure
         const updateQuery = `
             UPDATE notifications 
             SET is_read = TRUE, read_at = CURRENT_TIMESTAMP 
-            WHERE id = $1 AND recipient_id = $2 
+            WHERE id = $1 
             RETURNING id, is_read;
         `;
-        const result = await pool.query(updateQuery, [notificationId, req.user.id]);
+        const result = await pool.query(updateQuery, [notificationId]);
 
         if (result.rowCount === 0) {
             return res.status(404).json({ success: false, error: "Notification not found" });

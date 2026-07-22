@@ -13,6 +13,7 @@ const createTask = async (req, res, next) => {
             return next(error);
         }
 
+        // status defaults to 'assigned' as per the PDF contract
         const result = await pool.query(
             `INSERT INTO tasks (title, description, created_by, assigned_to, deadline, status) 
              VALUES ($1, $2, $3, $4, $5, 'assigned') RETURNING *`,
@@ -34,21 +35,10 @@ const createTask = async (req, res, next) => {
             newTask.id
         ]);
 
-        // 2. Insert into activity_log
-        const activityQuery = `
-            INSERT INTO activity_log (actor_id, target_user_id, event_type, entity_type, related_task_id)
-            VALUES ($1, $2, 'task_assigned', 'task', $3)
-        `;
-        await pool.query(activityQuery, [
-            req.user.id, // Admin ID
-            assigned_to, // Trainee ID
-            newTask.id
-        ]);
-
-        // 3. Emit the real-time socket notification to the exact ID string room
+        // 2. Emit the real-time socket notification
         const io = req.app.get('io');
         if (io) {
-            io.to(assigned_to.toString()).emit('new_notification', {
+            io.to(`user_${assigned_to}`).emit('new_notification', {
                 id: notifResult.rows[0].id,
                 type: 'task_assigned',
                 title: 'New Task Assigned',

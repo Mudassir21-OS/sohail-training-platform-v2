@@ -52,21 +52,10 @@ const createSubmission = async (req, res, next) => {
             taskId
         ]);
 
-        // 5. Insert into activity_log
-        const activityQuery = `
-            INSERT INTO activity_log (actor_id, target_user_id, event_type, entity_type, related_task_id)
-            VALUES ($1, $2, 'submission_created', 'submission', $3)
-        `;
-        await pool.query(activityQuery, [
-            req.user.id, // Trainee ID
-            adminId,     // Admin ID
-            taskId
-        ]);
-
-        // 6. Emit real-time notification to the Admin exact ID string
+        // 5. Emit real-time notification to the Admin
         const io = req.app.get('io');
         if (io) {
-            io.to(adminId.toString()).emit('new_notification', {
+            io.to(`user_${adminId}`).emit('new_notification', {
                 id: notifResult.rows[0].id,
                 type: 'submission_received',
                 title: 'New Submission',
@@ -160,21 +149,10 @@ const gradeSubmission = async (req, res, next) => {
             taskId
         ]);
 
-        // 5. Insert into activity_log
-        const activityQuery = `
-            INSERT INTO activity_log (actor_id, target_user_id, event_type, entity_type, related_task_id)
-            VALUES ($1, $2, 'grade_created', 'score', $3)
-        `;
-        await pool.query(activityQuery, [
-            req.user.id, // Admin ID
-            traineeId,   // Trainee ID
-            taskId
-        ]);
-
-        // 6. Emit real-time notification to the Trainee exact ID string
+        // 5. Emit real-time notification to the Trainee
         const io = req.app.get('io');
         if (io) {
-            io.to(traineeId.toString()).emit('new_notification', {
+            io.to(`user_${traineeId}`).emit('new_notification', {
                 id: notifResult.rows[0].id,
                 type: 'grade_posted',
                 title: 'New Grade Posted',

@@ -58,14 +58,6 @@ io.on('connection', (socket) => {
     // Join the private room for this authenticated user only
     socket.join(`user_${socket.userId}`);
 
-    // Listen for the frontend telling us which user room to join
-    socket.on("join", (userId) => {
-        if (userId) {
-            socket.join(userId.toString());
-            console.log(`User ${userId} successfully joined their personal socket room`);
-        }
-    });
-
     socket.on('disconnect', () => {
         console.log(`User ${socket.userId} disconnected`);
     });

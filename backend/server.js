@@ -1,14 +1,12 @@
 require('dotenv').config();
-
 const express = require('express');
 const cors = require('cors');
+const jwt = require('jsonwebtoken');
 const http = require('http'); // Native Node module required for WebSockets
 const { Server } = require('socket.io'); // Socket.io server
 
 const app = express();
-
 app.use(express.json());
-
 app.use(cors({
     origin: '*',
     methods: ['GET', 'POST', 'PUT', 'DELETE'],
@@ -22,7 +20,7 @@ const server = http.createServer(app);
 // 2. Initialize Socket.io with matching CORS settings
 const io = new Server(server, {
     cors: {
-        origin: '*', 
+        origin: '*',
         methods: ['GET', 'POST', 'PUT', 'DELETE'],
         allowedHeaders: ['Content-Type', 'Authorization']
     }
@@ -32,26 +30,36 @@ const io = new Server(server, {
 app.set('io', io);
 
 // 4. Socket.io Authentication Middleware
+// Verifies the real JWT sent from the frontend and joins the socket to that
+// specific user's private room. No more hardcoded/mocked user id.
 io.use((socket, next) => {
-    const token = socket.handshake.auth.token;
-    if (!token) {
+    const rawToken = socket.handshake.auth.token;
+    if (!rawToken) {
         return next(new Error("Authentication error: No token provided"));
     }
-    
-    // TODO: Verify the JWT token here. Mocking user ID 6 for current testing based on Mudassir's queries.
-    const decodedUserId = 6; 
-    
-    // Assign the user to a private room based on their ID for targeted notifications
-    socket.join(`user_${decodedUserId}`);
-    next();
+
+    // Frontend sends "Bearer <token>" — strip the prefix if present.
+    const token = rawToken.startsWith('Bearer ') ? rawToken.split(' ')[1] : rawToken;
+
+    try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        socket.userId = decoded.id;
+        socket.userRole = decoded.role;
+        next();
+    } catch (err) {
+        return next(new Error("Authentication error: Invalid or expired token"));
+    }
 });
 
 // 5. Connection Listener
 io.on('connection', (socket) => {
-    console.log(`User connected with socket ID: ${socket.id}`);
+    console.log(`User ${socket.userId} connected with socket ID: ${socket.id}`);
+
+    // Join the private room for this authenticated user only
+    socket.join(`user_${socket.userId}`);
 
     socket.on('disconnect', () => {
-        console.log('User disconnected');
+        console.log(`User ${socket.userId} disconnected`);
     });
 });
 // -------------------------------
@@ -84,10 +92,8 @@ app.use('/api/notifications', notificationRoutes);
 // Global Error Handler
 app.use((err, req, res, next) => {
     console.error(err.stack);
-
     const statusCode = err.statusCode || 500;
     const errorCode = err.code || 'SERVER_ERROR';
-
     res.status(statusCode).json({
         error: {
             message: err.message || 'Internal Server Error',
@@ -97,7 +103,6 @@ app.use((err, req, res, next) => {
 });
 
 const PORT = process.env.PORT || 3000;
-
 // IMPORTANT: Replaced app.listen with server.listen to start both Express and Socket.io
 server.listen(PORT, () => {
     console.log(`Backend Core running on port ${PORT} with WebSockets enabled`);

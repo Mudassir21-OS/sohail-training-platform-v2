@@ -3,6 +3,8 @@ import { useAuth } from '../context/AuthContext'
 import { useNavigate } from 'react-router-dom'
 import axios from 'axios'
 
+const BASE = 'https://sohail-backend-api.onrender.com'
+
 export default function LoginPage() {
   const { login } = useAuth()
   const navigate = useNavigate()
@@ -12,7 +14,7 @@ export default function LoginPage() {
 
   async function handleLogin() {
     try {
-      const res = await axios.post('https://sohail-backend-api.onrender.com/api/auth/login', {
+      const res = await axios.post(`${BASE}/api/auth/login`, {
         email,
         password
       })
@@ -47,7 +49,6 @@ export default function LoginPage() {
         <p style={{ color: '#94a3b8', textAlign: 'center', marginBottom: 30, fontSize: 14 }}>
           Sign in to your account
         </p>
-
         {error && (
           <div style={{
             background: '#450a0a',
@@ -60,7 +61,6 @@ export default function LoginPage() {
             {error}
           </div>
         )}
-
         <label style={{ color: '#94a3b8', fontSize: 13, display: 'block', marginBottom: 6 }}>Email</label>
         <input
           placeholder="you@example.com"
@@ -79,7 +79,6 @@ export default function LoginPage() {
             boxSizing: 'border-box'
           }}
         />
-
         <label style={{ color: '#94a3b8', fontSize: 13, display: 'block', marginBottom: 6 }}>Password</label>
         <input
           placeholder="••••••••"
@@ -99,7 +98,6 @@ export default function LoginPage() {
             boxSizing: 'border-box'
           }}
         />
-
         <button
           onClick={handleLogin}
           style={{

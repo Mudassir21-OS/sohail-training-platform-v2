@@ -38,7 +38,6 @@ router.put('/:id/read', authenticate, async (req, res) => {
     try {
         const notificationId = req.params.id;
         
-        // Uses Mudassir's Query #3 structure
         const updateQuery = `
             UPDATE notifications 
             SET is_read = TRUE, read_at = CURRENT_TIMESTAMP 

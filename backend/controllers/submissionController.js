@@ -38,6 +38,34 @@ const createSubmission = async (req, res, next) => {
         // 3. Update the task status to 'submitted'
         await pool.query(`UPDATE tasks SET status = 'submitted' WHERE id = $1`, [taskId]);
 
+        // 4. Insert notification for the Admin (created_by)
+        const adminId = taskCheck.rows[0].created_by;
+        const notifQuery = `
+            INSERT INTO notifications (recipient_id, actor_id, type, title, message, payload, related_task_id)
+            VALUES ($1, $2, 'submission_received', 'New Submission', 'A trainee has submitted a task.', $3, $4)
+            RETURNING id;
+        `;
+        const notifResult = await pool.query(notifQuery, [
+            adminId,
+            req.user.id,
+            { submission_id: subResult.rows[0].id },
+            taskId
+        ]);
+
+        // 5. Emit real-time notification to the Admin
+        const io = req.app.get('io');
+        if (io) {
+            io.to(`user_${adminId}`).emit('new_notification', {
+                id: notifResult.rows[0].id,
+                type: 'submission_received',
+                title: 'New Submission',
+                message: 'A trainee has submitted a task.',
+                payload: { submission_id: subResult.rows[0].id },
+                is_read: false,
+                created_at: new Date()
+            });
+        }
+
         res.status(201).json(subResult.rows[0]);
     } catch (err) {
         next(err);
@@ -88,14 +116,15 @@ const gradeSubmission = async (req, res, next) => {
             return next(error);
         }
 
-        // 1. Verify submission exists and get the task_id
-        const subCheck = await pool.query('SELECT task_id FROM submissions WHERE id = $1', [id]);
+        // 1. Verify submission exists and get BOTH the task_id and trainee_id
+        const subCheck = await pool.query('SELECT task_id, trainee_id FROM submissions WHERE id = $1', [id]);
         if (subCheck.rows.length === 0) {
             const error = new Error('Submission not found');
             error.statusCode = 404;
             return next(error);
         }
         const taskId = subCheck.rows[0].task_id;
+        const traineeId = subCheck.rows[0].trainee_id;
 
         // 2. Insert the grade into the scores table
         const scoreResult = await pool.query(
@@ -106,6 +135,33 @@ const gradeSubmission = async (req, res, next) => {
 
         // 3. Update the task status to 'graded'
         await pool.query(`UPDATE tasks SET status = 'graded' WHERE id = $1`, [taskId]);
+
+        // 4. Insert notification for the Trainee
+        const notifQuery = `
+            INSERT INTO notifications (recipient_id, actor_id, type, title, message, payload, related_task_id)
+            VALUES ($1, $2, 'grade_posted', 'New Grade Posted', 'Your task submission has been graded.', $3, $4)
+            RETURNING id;
+        `;
+        const notifResult = await pool.query(notifQuery, [
+            traineeId,
+            req.user.id,
+            { score: score },
+            taskId
+        ]);
+
+        // 5. Emit real-time notification to the Trainee
+        const io = req.app.get('io');
+        if (io) {
+            io.to(`user_${traineeId}`).emit('new_notification', {
+                id: notifResult.rows[0].id,
+                type: 'grade_posted',
+                title: 'New Grade Posted',
+                message: 'Your task submission has been graded.',
+                payload: { score: score },
+                is_read: false,
+                created_at: new Date()
+            });
+        }
 
         res.status(200).json(scoreResult.rows[0]);
     } catch (err) {

@@ -15,8 +15,12 @@ export default function NotificationBell({ token }) {
       .catch(err => console.error('Failed to load notifications:', err))
 
     const socket = io(BASE, { auth: { token: `Bearer ${token}` } })
+socket.on('connect', () => {
+  console.log("SOCKET CONNECTED:", socket.id)
+})
     socket.on('new_notification', (n) => {
-      setNotifications(prev => [n, ...prev])
+  console.log("RECEIVED LIVE NOTIFICATION:", n)
+    setNotifications(prev => [n, ...prev])
     })
     socket.on('connect_error', (err) => console.error('Socket connection failed:', err.message))
     socketRef.current = socket

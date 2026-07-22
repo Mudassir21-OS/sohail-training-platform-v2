@@ -5,10 +5,7 @@ const pool = require('../db');
 // GET /api/notifications - Fetch user's notification feed
 router.get('/', async (req, res) => {
     try {
-        // IMPORTANT: Swap '6' with your auth middleware variable (e.g., req.user.id) once authentication is wired up.
         const userId = req.user ? req.user.id : 6; 
-
-        // Uses Mudassir's Query #2 structure, mapped to Emna's requested JSON shape
         const feedQuery = `
             SELECT 
                 n.id, 
@@ -37,7 +34,6 @@ router.put('/:id/read', async (req, res) => {
     try {
         const notificationId = req.params.id;
         
-        // Uses Mudassir's Query #3 structure
         const updateQuery = `
             UPDATE notifications 
             SET is_read = TRUE, read_at = CURRENT_TIMESTAMP 

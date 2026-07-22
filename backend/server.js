@@ -33,22 +33,22 @@ app.set('io', io);
 
 // 4. Socket.io Authentication Middleware
 io.use((socket, next) => {
-    const token = socket.handshake.auth.token;
-    if (!token) {
-        return next(new Error("Authentication error: No token provided"));
-    }
-    
-    // TODO: Verify the JWT token here. Mocking user ID 6 for current testing based on Mudassir's queries.
-    const decodedUserId = 6; 
-    
-    // Assign the user to a private room based on their ID for targeted notifications
-    socket.join(`user_${decodedUserId}`);
+    // Basic pass-through middleware. 
+    // Emna's frontend is now handling the room joining via the "join" event below.
     next();
 });
 
 // 5. Connection Listener
 io.on('connection', (socket) => {
     console.log(`User connected with socket ID: ${socket.id}`);
+
+    // Listen for the frontend telling us which user room to join
+    socket.on("join", (userId) => {
+        if (userId) {
+            socket.join(userId.toString());
+            console.log(`User ${userId} successfully joined their personal socket room`);
+        }
+    });
 
     socket.on('disconnect', () => {
         console.log('User disconnected');
@@ -98,7 +98,6 @@ app.use((err, req, res, next) => {
 
 const PORT = process.env.PORT || 3000;
 
-// IMPORTANT: Replaced app.listen with server.listen to start both Express and Socket.io
 server.listen(PORT, () => {
     console.log(`Backend Core running on port ${PORT} with WebSockets enabled`);
 });

@@ -44,10 +44,21 @@ router.post('/', authenticate, requireAdmin, async (req, res) => {
         newTask.id
       ]);
 
-      // 3. Emit the real-time socket notification
+      // 3. Insert into activity_log
+      const activityQuery = `
+        INSERT INTO activity_log (actor_id, target_user_id, event_type, entity_type, related_task_id)
+        VALUES ($1, $2, 'task_assigned', 'team_task', $3)
+      `;
+      await client.query(activityQuery, [
+        created_by, 
+        member.user_id, 
+        newTask.id
+      ]);
+
+      // 4. Emit the real-time socket notification (Exact ID string)
       const io = req.app.get('io');
       if (io) {
-          io.to(`user_${member.user_id}`).emit('new_notification', {
+          io.to(member.user_id.toString()).emit('new_notification', {
               id: notifResult.rows[0].id,
               type: 'team_task_assigned',
               title: 'New Team Task Assigned',
@@ -98,6 +109,44 @@ router.put('/:taskId/members/:userId/submit', authenticate, async (req, res) => 
         return res.status(404).json({ error: 'Task assignment not found.' });
     }
 
+    // Fetch the admin who created the team task
+    const taskQuery = await pool.query('SELECT created_by FROM team_tasks WHERE id = $1', [taskId]);
+    const adminId = taskQuery.rows[0].created_by;
+
+    // 1. Insert the submission notification for the Admin
+    const notifQuery = `
+      INSERT INTO notifications (recipient_id, actor_id, type, title, message, payload, related_team_task_id)
+      VALUES ($1, $2, 'submission_received', 'New Team Submission', 'A trainee has submitted their team task part.', $3, $4)
+      RETURNING id;
+    `;
+    const notifResult = await pool.query(notifQuery, [
+      adminId, 
+      userId, 
+      { submission_link: submission_link }, 
+      taskId
+    ]);
+
+    // 2. Insert into activity_log
+    const activityQuery = `
+      INSERT INTO activity_log (actor_id, target_user_id, event_type, entity_type, related_task_id)
+      VALUES ($1, $2, 'submission_created', 'team_task_submission', $3)
+    `;
+    await pool.query(activityQuery, [userId, adminId, taskId]);
+
+    // 3. Emit the real-time socket notification to the Admin (Exact ID string)
+    const io = req.app.get('io');
+    if (io) {
+        io.to(adminId.toString()).emit('new_notification', {
+            id: notifResult.rows[0].id,
+            type: 'submission_received',
+            title: 'New Team Submission',
+            message: 'A trainee has submitted their team task part.',
+            payload: { submission_link: submission_link },
+            is_read: false,
+            created_at: new Date()
+        });
+    }
+
     res.json({ message: 'Part submitted successfully', part: result.rows[0] });
   } catch (error) {
     console.error('Error submitting part:', error);
@@ -110,7 +159,7 @@ router.put('/:taskId/members/:userId/submit', authenticate, async (req, res) => 
 router.put('/:taskId/members/:userId/grade', authenticate, requireAdmin, async (req, res) => { 
   const { taskId, userId } = req.params;
   const { score, feedback } = req.body;
-  const actor_id = req.user.id; // Added to capture the admin grading the task
+  const actor_id = req.user.id; 
 
   try {
     const updateQuery = `
@@ -138,10 +187,17 @@ router.put('/:taskId/members/:userId/grade', authenticate, requireAdmin, async (
       taskId
     ]);
 
-    // 2. Emit the real-time socket notification
+    // 2. Insert into activity_log
+    const activityQuery = `
+      INSERT INTO activity_log (actor_id, target_user_id, event_type, entity_type, related_task_id)
+      VALUES ($1, $2, 'grade_created', 'team_task_score', $3)
+    `;
+    await pool.query(activityQuery, [actor_id, userId, taskId]);
+
+    // 3. Emit the real-time socket notification (Exact ID string)
     const io = req.app.get('io');
     if (io) {
-        io.to(`user_${userId}`).emit('new_notification', {
+        io.to(userId.toString()).emit('new_notification', {
             id: notifResult.rows[0].id,
             type: 'grade_posted',
             title: 'New Grade Posted',
@@ -196,7 +252,6 @@ router.get('/', authenticate, async (req, res) => {
 
     const result = await pool.query(query, params);
 
-    // Emna's grouping logic applied exactly as requested
     const grouped = {};
     result.rows.forEach(row => {
       if (!grouped[row.id]) {

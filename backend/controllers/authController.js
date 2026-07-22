@@ -4,7 +4,6 @@ const pool = require('../db');
 
 const register = async (req, res, next) => {
     try {
-        // Mapped to the API PDF: using 'name' instead of 'full_name'
         const { name, email, password, role } = req.body;
 
         const salt = await bcrypt.genSalt(10);
